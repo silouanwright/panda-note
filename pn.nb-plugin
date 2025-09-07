@@ -258,6 +258,9 @@ _pn_migrate() {
   done
   
   echo "✓ Migrated ${task_count} task$([ ${task_count} -eq 1 ] || echo "s") to ${today_file}"
+  
+  # Update the warning date so we don't warn again today
+  nb set "pn.last_warning_date" "$(_pn_get_today)" &>/dev/null
 }
 
 # Open today's note in editor
