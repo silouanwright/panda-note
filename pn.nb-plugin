@@ -78,26 +78,27 @@ _pn() {
 # Helper Functions
 ###############################################################################
 
-# Get today's date in YYYYMMDD format
+# Get today's date in YYYY-MM-DD format
 _pn_get_today() {
-  date +"%Y%m%d"
+  date +"%Y-%m-%d"
 }
 
-# Get yesterday's date in YYYYMMDD format
+# Get yesterday's date in YYYY-MM-DD format
 _pn_get_yesterday() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
-    date -v-1d +"%Y%m%d"
+    date -v-1d +"%Y-%m-%d"
   else
     # Linux
-    date -d "yesterday" +"%Y%m%d"
+    date -d "yesterday" +"%Y-%m-%d"
   fi
 }
 
 # Format date for display (YYYY-MM-DD)
+# Now just returns the input since we're already using YYYY-MM-DD format
 _pn_format_date() {
   local date_str="${1}"
-  echo "${date_str:0:4}-${date_str:4:2}-${date_str:6:2}"
+  echo "${date_str}"
 }
 
 # Find the most recent daily note before today
@@ -105,8 +106,8 @@ _pn_find_last_daily() {
   local today="$(_pn_get_today)"
   local last_daily=""
   
-  # List all files matching daily note pattern, sort in reverse
-  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{8}\.md$" | sort -r); do
+  # List all files matching daily note pattern (YYYY-MM-DD), sort in reverse
+  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}\.md$" | sort -r); do
     local file_date="${file%.md}"
     if [[ "${file_date}" < "${today}" ]]; then
       last_daily="${file_date}"
@@ -317,7 +318,7 @@ _pn_list() {
   echo ""
   
   # List all daily note files, sorted in reverse
-  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{8}\.md$" | sort -r); do
+  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{4}-[0-9]{2}-[0-9]{2}\.md$" | sort -r); do
     local file_date="${file%.md}"
     local formatted_date="$(_pn_format_date "${file_date}")"
     local incomplete_count="$(_pn_count_incomplete "${file}")"

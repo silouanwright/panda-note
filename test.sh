@@ -56,7 +56,7 @@ test_command "List daily notes" "nb pn list"
 test_command "Today command" "nb pn today --print"
 
 # Test 6: Check file was created
-TODAY_FILE="$(date +%Y%m%d).md"
+TODAY_FILE="$(date +%Y-%m-%d).md"
 test_command "Daily file exists" "nb show $TODAY_FILE"
 
 # Test 7: Verify task content
@@ -72,7 +72,7 @@ fi
 # Test 8: Migration detection
 echo -n "Testing: Migration detection... "
 # Create yesterday's file with incomplete task
-YESTERDAY="$(date -d yesterday +%Y%m%d 2>/dev/null || date -v-1d +%Y%m%d).md"
+YESTERDAY="$(date -d yesterday +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d).md"
 echo "# Daily $(date -d yesterday +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d)" | nb add "$YESTERDAY" --title
 echo "- [ ] Yesterday task" | nb "$YESTERDAY" add --content
 # This should trigger a warning (we'll just check it doesn't error)

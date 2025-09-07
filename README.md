@@ -4,7 +4,7 @@ A "twos-like" [nb](https://github.com/xwmx/nb) plugin for daily task management 
 
 ## Features
 
-- **Daily Notes**: Automatically creates daily notes in `YYYYMMDD.md` format
+- **Daily Notes**: Automatically creates daily notes in `YYYY-MM-DD.md` format
 - **Quick Task Capture**: Add tasks instantly to today's note
 - **Smart Task Migration**: Automatically detects and prompts to migrate incomplete tasks from previous days
 - **Non-blocking Warnings**: Get reminded about yesterday's tasks without interrupting your flow
@@ -96,28 +96,28 @@ pnm
 ### Day 1 (Monday)
 ```bash
 $ pna "Write weekly report"
-✓ Added to 20250908.md
+✓ Added to 2025-09-08.md
 
 $ pna "Call client"
-✓ Added to 20250908.md
+✓ Added to 2025-09-08.md
 
 $ pna "Review code"
-✓ Added to 20250908.md
+✓ Added to 2025-09-08.md
 ```
 
 ### Day 2 (Tuesday)
 ```bash
 $ pna "Team standup"
 ⚠️  Yesterday has 2 incomplete tasks. Run 'nb pn migrate' to move them.
-✓ Added to 20250909.md
+✓ Added to 2025-09-09.md
 
 $ pnm
-Found 2 incomplete tasks in 20250908.md:
+Found 2 incomplete tasks in 2025-09-08.md:
   - [ ] Call client
   - [ ] Review code
 
 Migrate to today? (y/n): y
-✓ Migrated 2 tasks to 20250909.md
+✓ Migrated 2 tasks to 2025-09-09.md
 ```
 
 ## File Structure
@@ -126,9 +126,9 @@ PandaNote creates daily notes in your current nb notebook:
 
 ```
 notebook/
-├── 20250907.md   # Sunday's notes
-├── 20250908.md   # Monday's notes
-├── 20250909.md   # Tuesday's notes
+├── 2025-09-07.md   # Sunday's notes
+├── 2025-09-08.md   # Monday's notes
+├── 2025-09-09.md   # Tuesday's notes
 └── ...
 ```
 
@@ -179,7 +179,7 @@ PandaNote is a pure nb plugin, so all nb features work seamlessly:
 
 ```bash
 # Search across daily notes
-nb search "meeting" 202509*.md
+nb search "meeting" 2025-09*.md
 
 # Browse daily notes in web interface
 nb browse
@@ -188,7 +188,7 @@ nb browse
 nb sync
 
 # Export a daily note
-nb export 20250909.md --to pdf
+nb export 2025-09-09.md --to pdf
 ```
 
 ## Troubleshooting
@@ -205,12 +205,12 @@ nb plugins install https://raw.githubusercontent.com/silouanwright/panda-note/ma
 
 ### Tasks not migrating
 - Ensure tasks use the exact format: `- [ ] task text`
-- Check that yesterday's file exists: `nb list | grep $(date -d yesterday +%Y%m%d)`
+- Check that yesterday's file exists: `nb list | grep $(date -d yesterday +%Y-%m-%d)`
 
 ### Wrong date format
 PandaNote automatically handles both macOS and Linux date commands. If you see issues, verify your system date:
 ```bash
-date +%Y%m%d  # Should output: 20250909
+date +%Y-%m-%d  # Should output: 2025-09-09
 ```
 
 ## Contributing
