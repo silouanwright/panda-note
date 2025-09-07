@@ -31,7 +31,7 @@ curl -L https://raw.github.com/xwmx/nb/master/nb -o ~/bin/nb && chmod +x ~/bin/n
 
 ```bash
 # Install the plugin
-nb plugins install https://raw.githubusercontent.com/yourusername/panda-note/main/pn.nb-plugin
+nb plugins install https://raw.githubusercontent.com/silouanwright/panda-note/main/pn.nb-plugin
 
 # Verify installation
 nb pn help
@@ -200,7 +200,7 @@ nb --version
 
 # Reinstall plugin
 nb plugins uninstall pn
-nb plugins install https://raw.githubusercontent.com/yourusername/panda-note/main/pn.nb-plugin
+nb plugins install https://raw.githubusercontent.com/silouanwright/panda-note/main/pn.nb-plugin
 ```
 
 ### Tasks not migrating
@@ -226,6 +226,6 @@ MIT
 
 ## Credits
 
-Built for [nb](https://github.com/xwmx/nb) by [Your Name]
+Built for [nb](https://github.com/xwmx/nb) by [Silouan Wright](https://github.com/silouanwright)
 
 Inspired by [Twos](https://www.twosapp.com/) and the Bullet Journal method.

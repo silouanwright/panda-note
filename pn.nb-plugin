@@ -6,10 +6,10 @@
 # automatic migration of incomplete tasks between days.
 #
 # Add this plugin to nb with:
-#   nb plugins install https://raw.githubusercontent.com/yourusername/panda-note/main/pn.nb-plugin
+#   nb plugins install https://raw.githubusercontent.com/silouanwright/panda-note/main/pn.nb-plugin
 #
 # For more information:
-#   https://github.com/yourusername/panda-note
+#   https://github.com/silouanwright/panda-note
 ###############################################################################
 
 # Add the pn subcommand
