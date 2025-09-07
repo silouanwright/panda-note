@@ -144,9 +144,12 @@ _pn_count_incomplete() {
 _pn_check_day_change() {
   local today="$(_pn_get_today)"
   local last_warning_date=""
+  local warning_file="${NB_DIR}/.pn_last_warning"
   
-  # Get last warning date from nb settings
-  last_warning_date="$(nb get "pn.last_warning_date" 2>/dev/null || echo "")"
+  # Get last warning date from file
+  if [[ -f "${warning_file}" ]]; then
+    last_warning_date="$(cat "${warning_file}" 2>/dev/null || echo "")"
+  fi
   
   if [[ "${last_warning_date}" != "${today}" ]]; then
     # New day, check for incomplete tasks in yesterday's note
@@ -158,7 +161,7 @@ _pn_check_day_change() {
       if [[ "${incomplete_count}" -gt 0 ]]; then
         # Show warning and update last warning date
         echo "⚠️  Yesterday has ${incomplete_count} incomplete task$([ ${incomplete_count} -eq 1 ] || echo "s"). Run 'nb pn migrate' to move them."
-        nb set "pn.last_warning_date" "${today}" &>/dev/null
+        echo "${today}" > "${warning_file}"
       fi
     fi
   fi
@@ -260,7 +263,7 @@ _pn_migrate() {
   echo "✓ Migrated ${task_count} task$([ ${task_count} -eq 1 ] || echo "s") to ${today_file}"
   
   # Update the warning date so we don't warn again today
-  nb set "pn.last_warning_date" "$(_pn_get_today)" &>/dev/null
+  echo "$(_pn_get_today)" > "${NB_DIR}/.pn_last_warning"
 }
 
 # Open today's note in editor
