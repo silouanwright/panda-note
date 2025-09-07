@@ -123,7 +123,7 @@ _pn_extract_incomplete() {
   local file="${1}"
   
   if nb show "${file}" &>/dev/null; then
-    nb show "${file}" | grep -E "^- \[ \]" || true
+    nb show "${file}" --no-color | grep -E "^- \[ \]" || true
   fi
 }
 
@@ -133,7 +133,8 @@ _pn_count_incomplete() {
   local count=0
   
   if nb show "${file}" &>/dev/null; then
-    count=$(nb show "${file}" | grep -cE "^- \[ \]" || echo "0")
+    count=$(nb show "${file}" --no-color | grep -cE "^- \[ \]" 2>/dev/null || echo "0")
+    count="${count//[^0-9]/}"  # Remove any non-numeric characters
   fi
   
   echo "${count}"
@@ -184,37 +185,12 @@ _pn_add() {
   
   # Create today's file if it doesn't exist
   if ! nb show "${today_file}" &>/dev/null; then
-    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+    echo "# Daily ${today_formatted}" | nb add "${today_file}" &>/dev/null
   fi
   
-  # Add the task to today's file
+  # Add the task to today's file - simple append
   local task_line="- [ ] ${task}"
-  
-  # Get current content
-  local current_content="$(nb show "${today_file}")"
-  
-  # Add task (after title if it exists, otherwise at the beginning)
-  if [[ "${current_content}" == "# Daily "* ]]; then
-    # Has title, add after it with a blank line if needed
-    local title_line="$(echo "${current_content}" | head -n1)"
-    local rest_content="$(echo "${current_content}" | tail -n +2)"
-    
-    if [[ -z "${rest_content}" ]] || [[ "${rest_content}" == $'\n'* ]]; then
-      # Empty or starts with newline, just add the task
-      nb edit "${today_file}" --content "${title_line}
-
-${task_line}
-${rest_content}" &>/dev/null
-    else
-      # Has content right after title
-      nb edit "${today_file}" --content "${title_line}
-${task_line}
-${rest_content}" &>/dev/null
-    fi
-  else
-    # No title or different format, just append
-    echo "${task_line}" | nb add "${today_file}" --content &>/dev/null
-  fi
+  echo "${task_line}" | nb edit "${today_file}" &>/dev/null
   
   echo "✓ Added to ${today_file}"
 }
@@ -271,23 +247,15 @@ _pn_migrate() {
   
   # Create today's file if it doesn't exist
   if ! nb show "${today_file}" &>/dev/null; then
-    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+    echo "# Daily ${today_formatted}" | nb add "${today_file}" &>/dev/null
   fi
   
-  # Add tasks to today's file
-  local current_content="$(nb show "${today_file}")"
-  local new_content="${current_content}"
-  
-  # Add each task
+  # Add each task to today's file
   echo "${tasks}" | while IFS= read -r task; do
     if [[ -n "${task}" ]]; then
-      new_content="${new_content}
-${task}"
+      echo "${task}" | nb edit "${today_file}" &>/dev/null
     fi
   done
-  
-  # Update the file
-  nb edit "${today_file}" --content "${new_content}" &>/dev/null
   
   echo "✓ Migrated ${task_count} task$([ ${task_count} -eq 1 ] || echo "s") to ${today_file}"
 }
@@ -300,7 +268,7 @@ _pn_today() {
   
   # Create today's file if it doesn't exist
   if ! nb show "${today_file}" &>/dev/null; then
-    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+    echo "# Daily ${today_formatted}" | nb add "${today_file}" &>/dev/null
     echo "Created ${today_file}"
   fi
   
