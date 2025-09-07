@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Test artifacts
+test-output/
+*.log
+
+# nb notebooks (for testing)
+.nb/
+notebooks/

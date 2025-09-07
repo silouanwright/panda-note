@@ -1,0 +1,351 @@
+#!/usr/bin/env bash
+###############################################################################
+# pn.nb-plugin
+#
+# PandaNote - A "twos-like" nb plugin for daily task management with 
+# automatic migration of incomplete tasks between days.
+#
+# Add this plugin to nb with:
+#   nb plugins install https://raw.githubusercontent.com/yourusername/panda-note/main/pn.nb-plugin
+#
+# For more information:
+#   https://github.com/yourusername/panda-note
+###############################################################################
+
+# Add the pn subcommand
+_subcommands add "pn"
+
+# Define help text
+_subcommands describe "pn" <<HEREDOC
+Usage:
+  nb pn add <task>          Add task to today's daily note
+  nb pn migrate [<file>]    Migrate incomplete tasks (default: yesterday)
+  nb pn today               Open today's note in editor
+  nb pn list                List recent daily notes
+  nb pn help                Show this help message
+
+Description:
+  PandaNote (pn) is a daily task management plugin for nb that helps you
+  maintain a "twos-like" workflow. It automatically detects when you're
+  starting a new day and prompts you to migrate incomplete tasks from
+  previous days.
+
+Examples:
+  nb pn add "Call mom"
+  nb pn migrate
+  nb pn migrate project-notes.md
+  nb pn today
+
+Optional Aliases:
+  Add these to your .bashrc or .zshrc for shorter commands:
+    alias pn="nb pn"
+    alias pna="nb pn add"
+    alias pnm="nb pn migrate"
+HEREDOC
+
+# Main pn function
+_pn() {
+  local _subcommand="${1:-}"
+  shift
+  
+  case "${_subcommand}" in
+    add)
+      _pn_add "$@"
+      ;;
+    migrate)
+      _pn_migrate "$@"
+      ;;
+    today)
+      _pn_today
+      ;;
+    list)
+      _pn_list
+      ;;
+    help|--help|-h)
+      _help "pn"
+      ;;
+    *)
+      if [[ -z "${_subcommand}" ]]; then
+        _pn_today
+      else
+        _exit_1 printf "Unknown subcommand: %s\\n" "${_subcommand}"
+      fi
+      ;;
+  esac
+}
+
+###############################################################################
+# Helper Functions
+###############################################################################
+
+# Get today's date in YYYYMMDD format
+_pn_get_today() {
+  date +"%Y%m%d"
+}
+
+# Get yesterday's date in YYYYMMDD format
+_pn_get_yesterday() {
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    date -v-1d +"%Y%m%d"
+  else
+    # Linux
+    date -d "yesterday" +"%Y%m%d"
+  fi
+}
+
+# Format date for display (YYYY-MM-DD)
+_pn_format_date() {
+  local date_str="${1}"
+  echo "${date_str:0:4}-${date_str:4:2}-${date_str:6:2}"
+}
+
+# Find the most recent daily note before today
+_pn_find_last_daily() {
+  local today="$(_pn_get_today)"
+  local last_daily=""
+  
+  # List all files matching daily note pattern, sort in reverse
+  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{8}\.md$" | sort -r); do
+    local file_date="${file%.md}"
+    if [[ "${file_date}" < "${today}" ]]; then
+      last_daily="${file_date}"
+      break
+    fi
+  done
+  
+  echo "${last_daily}"
+}
+
+# Extract incomplete tasks from a file
+_pn_extract_incomplete() {
+  local file="${1}"
+  
+  if nb show "${file}" &>/dev/null; then
+    nb show "${file}" | grep -E "^- \[ \]" || true
+  fi
+}
+
+# Count incomplete tasks in a file
+_pn_count_incomplete() {
+  local file="${1}"
+  local count=0
+  
+  if nb show "${file}" &>/dev/null; then
+    count=$(nb show "${file}" | grep -cE "^- \[ \]" || echo "0")
+  fi
+  
+  echo "${count}"
+}
+
+# Check if we should show day change warning
+_pn_check_day_change() {
+  local today="$(_pn_get_today)"
+  local last_warning_date=""
+  
+  # Get last warning date from nb settings
+  last_warning_date="$(nb get "pn.last_warning_date" 2>/dev/null || echo "")"
+  
+  if [[ "${last_warning_date}" != "${today}" ]]; then
+    # New day, check for incomplete tasks in yesterday's note
+    local last_daily="$(_pn_find_last_daily)"
+    
+    if [[ -n "${last_daily}" ]]; then
+      local incomplete_count="$(_pn_count_incomplete "${last_daily}.md")"
+      
+      if [[ "${incomplete_count}" -gt 0 ]]; then
+        # Show warning and update last warning date
+        echo "⚠️  Yesterday has ${incomplete_count} incomplete task$([ ${incomplete_count} -eq 1 ] || echo "s"). Run 'nb pn migrate' to move them."
+        nb set "pn.last_warning_date" "${today}" &>/dev/null
+      fi
+    fi
+  fi
+}
+
+###############################################################################
+# Subcommand Functions
+###############################################################################
+
+# Add a task to today's daily note
+_pn_add() {
+  local task="${*}"
+  
+  if [[ -z "${task}" ]]; then
+    _exit_1 echo "Error: No task provided."
+  fi
+  
+  local today="$(_pn_get_today)"
+  local today_file="${today}.md"
+  local today_formatted="$(_pn_format_date "${today}")"
+  
+  # Check for day change and show warning if needed
+  _pn_check_day_change
+  
+  # Create today's file if it doesn't exist
+  if ! nb show "${today_file}" &>/dev/null; then
+    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+  fi
+  
+  # Add the task to today's file
+  local task_line="- [ ] ${task}"
+  
+  # Get current content
+  local current_content="$(nb show "${today_file}")"
+  
+  # Add task (after title if it exists, otherwise at the beginning)
+  if [[ "${current_content}" == "# Daily "* ]]; then
+    # Has title, add after it with a blank line if needed
+    local title_line="$(echo "${current_content}" | head -n1)"
+    local rest_content="$(echo "${current_content}" | tail -n +2)"
+    
+    if [[ -z "${rest_content}" ]] || [[ "${rest_content}" == $'\n'* ]]; then
+      # Empty or starts with newline, just add the task
+      nb edit "${today_file}" --content "${title_line}
+
+${task_line}
+${rest_content}" &>/dev/null
+    else
+      # Has content right after title
+      nb edit "${today_file}" --content "${title_line}
+${task_line}
+${rest_content}" &>/dev/null
+    fi
+  else
+    # No title or different format, just append
+    echo "${task_line}" | nb add "${today_file}" --content &>/dev/null
+  fi
+  
+  echo "✓ Added to ${today_file}"
+}
+
+# Migrate incomplete tasks to today's note
+_pn_migrate() {
+  local source_file="${1:-}"
+  local today="$(_pn_get_today)"
+  local today_file="${today}.md"
+  local today_formatted="$(_pn_format_date "${today}")"
+  
+  # Determine source file
+  if [[ -z "${source_file}" ]]; then
+    # No file specified, use yesterday's
+    local last_daily="$(_pn_find_last_daily)"
+    
+    if [[ -z "${last_daily}" ]]; then
+      echo "No previous daily notes found."
+      return 0
+    fi
+    
+    source_file="${last_daily}.md"
+  fi
+  
+  # Check if source file exists
+  if ! nb show "${source_file}" &>/dev/null; then
+    _exit_1 echo "Error: File '${source_file}' not found."
+  fi
+  
+  # Extract incomplete tasks
+  local tasks="$(_pn_extract_incomplete "${source_file}")"
+  
+  if [[ -z "${tasks}" ]]; then
+    echo "No incomplete tasks found in ${source_file}"
+    return 0
+  fi
+  
+  # Count tasks
+  local task_count="$(echo "${tasks}" | wc -l | tr -d ' ')"
+  
+  # Show tasks and prompt for confirmation
+  echo "Found ${task_count} incomplete task$([ ${task_count} -eq 1 ] || echo "s") in ${source_file}:"
+  echo "${tasks}" | while IFS= read -r task; do
+    echo "  ${task}"
+  done
+  
+  printf "\\nMigrate to today? (y/n): "
+  read -r response
+  
+  if [[ ! "${response}" =~ ^[Yy]$ ]]; then
+    echo "Migration cancelled."
+    return 0
+  fi
+  
+  # Create today's file if it doesn't exist
+  if ! nb show "${today_file}" &>/dev/null; then
+    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+  fi
+  
+  # Add tasks to today's file
+  local current_content="$(nb show "${today_file}")"
+  local new_content="${current_content}"
+  
+  # Add each task
+  echo "${tasks}" | while IFS= read -r task; do
+    if [[ -n "${task}" ]]; then
+      new_content="${new_content}
+${task}"
+    fi
+  done
+  
+  # Update the file
+  nb edit "${today_file}" --content "${new_content}" &>/dev/null
+  
+  echo "✓ Migrated ${task_count} task$([ ${task_count} -eq 1 ] || echo "s") to ${today_file}"
+}
+
+# Open today's note in editor
+_pn_today() {
+  local today="$(_pn_get_today)"
+  local today_file="${today}.md"
+  local today_formatted="$(_pn_format_date "${today}")"
+  
+  # Create today's file if it doesn't exist
+  if ! nb show "${today_file}" &>/dev/null; then
+    nb add "${today_file}" --title "# Daily ${today_formatted}" --content "" &>/dev/null
+    echo "Created ${today_file}"
+  fi
+  
+  # Open in editor
+  nb edit "${today_file}"
+}
+
+# List recent daily notes
+_pn_list() {
+  local today="$(_pn_get_today)"
+  local count=0
+  local max_days=30
+  
+  echo "Recent daily notes:"
+  echo ""
+  
+  # List all daily note files, sorted in reverse
+  for file in $(nb list --no-id --filenames | grep -E "^[0-9]{8}\.md$" | sort -r); do
+    local file_date="${file%.md}"
+    local formatted_date="$(_pn_format_date "${file_date}")"
+    local incomplete_count="$(_pn_count_incomplete "${file}")"
+    
+    # Add markers for special dates
+    local marker=""
+    if [[ "${file_date}" == "${today}" ]]; then
+      marker=" (today)"
+    elif [[ "${file_date}" == "$(_pn_get_yesterday)" ]]; then
+      marker=" (yesterday)"
+    fi
+    
+    # Show task count if any
+    local task_info=""
+    if [[ "${incomplete_count}" -gt 0 ]]; then
+      task_info=" - ${incomplete_count} incomplete task$([ ${incomplete_count} -eq 1 ] || echo "s")"
+    fi
+    
+    echo "  ${formatted_date}${marker}${task_info}"
+    
+    count=$((count + 1))
+    if [[ ${count} -ge ${max_days} ]]; then
+      echo "  ..."
+      break
+    fi
+  done
+  
+  if [[ ${count} -eq 0 ]]; then
+    echo "  No daily notes found."
+  fi
+}
